@@ -11,7 +11,6 @@ use nalgebra as na;
 pub struct PointCloudRenderer {
     shader: Effect,
     pos: ShaderAttribute<Point3<f32>>,
-    color: ShaderAttribute<Point3<f32>>,
     proj: ShaderUniform<Matrix4<f32>>,
     view: ShaderUniform<Matrix4<f32>>,
     colored_points: GPUVec<Point3<f32>>,
@@ -28,7 +27,6 @@ impl PointCloudRenderer {
         PointCloudRenderer {
             colored_points: point_cloud_data,
             pos: shader.get_attrib::<Point3<f32>>("position").unwrap(),
-            color: shader.get_attrib::<Point3<f32>>("color").unwrap(),
             proj: shader.get_uniform::<Matrix4<f32>>("proj").unwrap(),
             view: shader.get_uniform::<Matrix4<f32>>("view").unwrap(),
             shader,
@@ -50,30 +48,24 @@ impl Renderer for PointCloudRenderer {
 
         self.shader.use_program();
         self.pos.enable();
-        self.color.enable();
 
         camera.upload(pass, &mut self.proj, &mut self.view);
 
-        self.color.bind_sub_buffer(&mut self.colored_points, 1, 1);
         self.pos.bind_sub_buffer(&mut self.colored_points, 1, 0);
 
         let ctxt = Context::get();
         ctxt.point_size(self.point_size);
         ctxt.draw_arrays(Context::POINTS, 0, (self.colored_points.len() - 10) as i32);
         self.pos.disable();
-        self.color.disable();
     }
 }
 
 const VERTEX_SHADER_SRC: &str = "#version 100
-    attribute vec3 position;
-    attribute vec3 color;
-    varying   vec3 Color;
+    attribute vec3 position;    
     uniform   mat4 proj;
     uniform   mat4 view;
     void main() {
-        gl_Position = proj * view * vec4(position, 1.0);
-        Color = color;
+        gl_Position = proj * view * vec4(position, 10.0);
     }";
 
 const FRAGMENT_SHADER_SRC: &str = "#version 100
@@ -82,7 +74,6 @@ const FRAGMENT_SHADER_SRC: &str = "#version 100
 #else
    precision mediump float;
 #endif
-    varying vec3 Color;
     void main() {
-        gl_FragColor = vec4(Color, 1.0);
+        gl_FragColor = vec4(vec3(1.0, 1.0, 1.0), 1.0);
     }";
